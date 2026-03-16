@@ -1,0 +1,18 @@
+{
+  "name": "@designcraft/ai-engine",
+  "version": "1.0.0",
+  "description": "AI engine for translating natural language prompts into builder engine operations",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@designcraft/types": "workspace:*",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

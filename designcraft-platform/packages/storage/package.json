@@ -1,0 +1,19 @@
+{
+  "name": "@designcraft/storage",
+  "version": "1.0.0",
+  "description": "Persistent storage for projects, pages, versions, assets, and fonts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@designcraft/types": "workspace:*",
+    "pg": "^8.11.0",
+    "aws-sdk": "^2.1400.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

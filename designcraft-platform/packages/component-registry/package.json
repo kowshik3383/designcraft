@@ -1,0 +1,19 @@
+{
+  "name": "@designcraft/component-registry",
+  "version": "1.0.0",
+  "description": "Centralized type → React component mapping and prop schema for DesignCraft",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@designcraft/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "react": "^18.0.0",
+    "@types/react": "^18.0.0"
+  }
+}
