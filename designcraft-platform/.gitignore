@@ -1,0 +1,68 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# pnpm store
+.pnpm-store/
+
+# Build output
+dist/
+out/
+.build/
+.next/
+**/.next/
+**/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database files (if any local sqlite, not Postgres)
+*.sqlite
+*.db
+
+# Mac / Linux system files
+.DS_Store
+Thumbs.db
+
+# IDE / editor files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# JetBrains
+*.iml
+*.iws
+
+# Coverage
+coverage/
+**/coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional: temporary files
+tmp/
+temp/
+
+# Turborepo cache
+.turbo/
+
+# Yarn PnP (if using)
+.pnp.cjs
+.pnp.loader.mjs
+
+# Cloudinary / S3 temp uploads (if you generate local)
+uploads/
+assets/

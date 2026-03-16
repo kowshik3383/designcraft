@@ -188,8 +188,13 @@ export const getComponentSchema = (type: string) => {
 };
 
 export const getComponentList = () => {
-  return Object.keys(componentRegistry).map(type => ({
-    type,
-    ...componentRegistry[type].schema
-  }));
+  return Object.keys(componentRegistry).map(type => {
+    const schema = componentRegistry[type].schema;
+    // Destructure to remove the 'type' property from schema
+    const { type: schemaType, ...schemaWithoutType } = schema;
+    return {
+      type,
+      ...schemaWithoutType
+    };
+  });
 };

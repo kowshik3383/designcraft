@@ -18,8 +18,8 @@ export class OperationGenerator {
     // Handle insert operations
     if (lowerPrompt.includes('add') || lowerPrompt.includes('create')) {
       if (lowerPrompt.includes('text') || lowerPrompt.includes('paragraph')) {
-        const op: InsertNodeOperation = {
-          type: 'INSERT_NODE' as OperationType,
+        const op: Operation = {
+          type: 'INSERT_NODE',
           payload: {
             nodeType: 'Text',
             parentId: context.selectedNodeId || null,
@@ -36,8 +36,8 @@ export class OperationGenerator {
       }
 
       if (lowerPrompt.includes('button')) {
-        const op: InsertNodeOperation = {
-          type: 'INSERT_NODE' as OperationType,
+        const op: Operation = {
+          type: 'INSERT_NODE',
           payload: {
             nodeType: 'Button',
             parentId: context.selectedNodeId || null,
@@ -54,8 +54,8 @@ export class OperationGenerator {
       }
 
       if (lowerPrompt.includes('image') || lowerPrompt.includes('picture')) {
-        const op: InsertNodeOperation = {
-          type: 'INSERT_NODE' as OperationType,
+        const op: Operation = {
+          type: 'INSERT_NODE',
           payload: {
             nodeType: 'Image',
             parentId: context.selectedNodeId || null,
@@ -76,8 +76,8 @@ export class OperationGenerator {
     // Handle update operations
     if (lowerPrompt.includes('change') || lowerPrompt.includes('update') || lowerPrompt.includes('modify')) {
       if (context.selectedNodeId) {
-        const op: UpdateNodePropsOperation = {
-          type: 'UPDATE_NODE_PROPS' as OperationType,
+        const op: Operation = {
+          type: 'UPDATE_NODE_PROPS',
           payload: {
             nodeId: context.selectedNodeId,
             props: {
@@ -95,8 +95,8 @@ export class OperationGenerator {
     // Handle delete operations
     if (lowerPrompt.includes('delete') || lowerPrompt.includes('remove')) {
       if (context.selectedNodeId) {
-        const op: DeleteNodeOperation = {
-          type: 'DELETE_NODE' as OperationType,
+        const op: Operation = {
+          type: 'DELETE_NODE',
           payload: {
             nodeId: context.selectedNodeId
           },
@@ -109,8 +109,8 @@ export class OperationGenerator {
     // Handle move operations
     if (lowerPrompt.includes('move') || lowerPrompt.includes('reposition')) {
       if (context.selectedNodeId) {
-        const op: MoveNodeOperation = {
-          type: 'MOVE_NODE' as OperationType,
+        const op: Operation = {
+          type: 'MOVE_NODE',
           payload: {
             nodeId: context.selectedNodeId,
             newParentId: null,

@@ -171,20 +171,33 @@ S3_BUCKET_NAME="designcraft-assets"
 
 #### For Full Functionality
 ```bash
-# Install PostgreSQL (if not already installed)
-# macOS: brew install postgresql
-# Ubuntu: sudo apt install postgresql postgresql-contrib
+# Install MongoDB (if not already installed)
+# macOS: brew tap mongodb/brew && brew install mongodb-community
+# Ubuntu: sudo apt install mongodb
+# Or use MongoDB Atlas (cloud): https://www.mongodb.com/atlas
 
-# Create database
-createdb designcraft
+# Start MongoDB service (local)
+# macOS: brew services start mongodb/brew/mongodb-community
+# Ubuntu: sudo systemctl start mongodb
 
-# Run database migrations (when implemented)
-pnpm --filter=storage migrate
+# Create database (handled automatically by the application)
 ```
 **Why**: 
 - Required for persistent storage of projects and pages
 - Enables version management and asset storage
 - Necessary for production deployment
+
+#### Supabase Setup (Optional)
+```bash
+# Sign up for Supabase: https://supabase.com
+# Create a new project
+# Create a storage bucket named 'assets'
+# Get your project URL and anon key from Settings > API
+```
+**Why**: 
+- Provides cloud storage for uploaded assets
+- Handles file uploads, downloads, and management
+- Integrates seamlessly with the application
 
 ### Troubleshooting
 
@@ -434,17 +447,18 @@ pnpm build
 
 ### Environment Variables
 ```bash
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/designcraft"
+# Database (MongoDB)
+MONGODB_CONNECTION_STRING="mongodb://localhost:27017/designcraft"
+MONGODB_DATABASE_NAME="designcraft"
 
-# AI
-CLAUDE_API_KEY="your-claude-api-key"
-CLAUDE_API_URL="https://api.anthropic.com"
+# AI (Google Gemini)
+GEMINI_API_KEY="your-gemini-api-key"
+GEMINI_MODEL="gemini-pro"
 
-# Storage
-AWS_ACCESS_KEY_ID="your-aws-key"
-AWS_SECRET_ACCESS_KEY="your-aws-secret"
-S3_BUCKET_NAME="designcraft-assets"
+# Storage (Supabase)
+SUPABASE_URL="your-supabase-url"
+SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_BUCKET_NAME="assets"
 ```
 
 ### Database Schema

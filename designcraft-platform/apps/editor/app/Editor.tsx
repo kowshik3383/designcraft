@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useBuilderStore } from '@designcraft/builder-engine';
 import { getComponentList } from '@designcraft/component-registry';
@@ -6,7 +8,7 @@ import { Canvas } from './canvas/Canvas';
 import { Inspector } from './inspector/Inspector';
 import { ComponentLibrary } from './library/ComponentLibrary';
 
-export function Editor() {
+export default function Editor() {
   const [activePanel, setActivePanel] = useState<'library' | 'inspector'>('library');
   const document = useBuilderStore(state => state.document);
   const selectedNodeId = useBuilderStore(state => state.selectedNodeId);

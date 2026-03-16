@@ -65,11 +65,11 @@ This document summarizes the implementation of the DesignCraft website builder p
 - `packages/ai-engine/package.json` - Package configuration
 - `packages/ai-engine/tsconfig.json` - TypeScript configuration
 - `packages/ai-engine/src/types.ts` - AI engine types
-- `packages/ai-engine/src/aiClient.ts` - Claude API integration
+- `packages/ai-engine/src/aiClient.ts` - Google Gemini API integration
 - `packages/ai-engine/src/operationGenerator.ts` - Operation generation
 
 **Key Features**:
-- Claude API integration (claude-sonnet-4)
+- Google Gemini API integration (gemini-pro)
 - Natural language to operations conversion
 - Keyword-based operation generation
 - JSON Schema validation
@@ -80,14 +80,14 @@ This document summarizes the implementation of the DesignCraft website builder p
 **Files Created**:
 - `packages/storage/package.json` - Package configuration
 - `packages/storage/tsconfig.json` - TypeScript configuration
-- `packages/storage/src/dbClient.ts` - PostgreSQL client
-- `packages/storage/src/assets.ts` - S3/Cloudinary asset management
+- `packages/storage/src/dbClient.ts` - MongoDB client
+- `packages/storage/src/assets.ts` - Supabase asset management
 
 **Key Features**:
-- PostgreSQL database operations
+- MongoDB database operations
 - Page version management
 - Asset upload/download
-- S3/Cloudinary integration
+- Supabase integration
 
 ### ✅ Layer 4a - Renderer (`apps/renderer`)
 **Purpose**: Recursively renders node tree for preview and static export.
@@ -112,14 +112,14 @@ This document summarizes the implementation of the DesignCraft website builder p
 **Files Created**:
 - `packages/storage/package.json` - Package configuration
 - `packages/storage/tsconfig.json` - TypeScript configuration
-- `packages/storage/src/dbClient.ts` - PostgreSQL client
-- `packages/storage/src/assets.ts` - S3/Cloudinary asset management
+- `packages/storage/src/dbClient.ts` - MongoDB client
+- `packages/storage/src/assets.ts` - Supabase asset management
 
 **Key Features**:
-- PostgreSQL database operations
+- MongoDB database operations
 - Page version management
 - Asset upload/download
-- S3/Cloudinary integration
+- Supabase integration
 
 ### ✅ Layer 1 - Editor (`apps/editor`)
 **Purpose**: Visual interface for designers with drag-and-drop canvas.
@@ -170,9 +170,9 @@ designcraft-platform/
 - **Drag & Drop**: dnd-kit
 
 ### Backend & Storage
-- **Database**: PostgreSQL (Neon/Supabase)
-- **Assets**: S3/Cloudinary/R2
-- **AI**: Claude API (claude-sonnet-4)
+- **Database**: MongoDB (Local/Atlas)
+- **Assets**: Supabase Storage
+- **AI**: Google Gemini API (gemini-pro)
 
 ### Development
 - **Build Tool**: Turborepo
@@ -220,8 +220,8 @@ designcraft-platform/
 2. **Add Drag & Drop**: Integrate dnd-kit for canvas interactions
 3. **Implement Inspector**: Dynamic property controls based on component schemas
 4. **Add AI Integration**: Connect editor to AI engine for natural language commands
-5. **Database Setup**: Create PostgreSQL schema and migrations
-6. **Asset Management**: Implement file upload and storage
+5. **Database Setup**: Create MongoDB schema and collections
+6. **Asset Management**: Implement file upload and Supabase integration
 7. **Testing**: Add unit and integration tests
 8. **Documentation**: Create API documentation and usage guides
 
