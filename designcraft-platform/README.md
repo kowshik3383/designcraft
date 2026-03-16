@@ -22,25 +22,189 @@ designcraft-platform/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- pnpm 8+
+- **Node.js 18+**: Required for modern JavaScript features and package compatibility
+- **pnpm 8+**: Package manager that provides faster, disk-space efficient dependency management for monorepos
 
-### Installation
+### Installation & Setup
+
+#### 1. Clone and Navigate to Repository
 ```bash
-# Clone and install dependencies
+# Clone the repository (if not already done)
+git clone <repository-url>
 cd designcraft-platform
+```
+**Why**: This gets the complete monorepo structure with all packages and applications.
+
+#### 2. Install Dependencies
+```bash
 pnpm install
+```
+**Why**: 
+- Installs all dependencies for all packages and applications
+- Creates a shared `node_modules` for the monorepo
+- Sets up workspace links between packages
+- Ensures consistent dependency versions across all repositories
 
-# Start development servers
+#### 3. Verify Installation
+```bash
+# Check if all packages are properly linked
+pnpm list --depth=0
+
+# Verify TypeScript compilation works
+pnpm typecheck
+```
+**Why**: 
+- Confirms all workspace packages are properly linked
+- Ensures TypeScript configuration is correct across all repositories
+- Catches any dependency or type issues early
+
+#### 4. Start Development Environment
+```bash
+# Start all development servers simultaneously
 pnpm dev
+```
+**Why**: 
+- Launches both editor and renderer applications
+- Enables hot-reloading for development
+- Allows you to see changes across the entire platform
 
-# Start individual applications
-pnpm --filter=editor dev    # Editor interface
-pnpm --filter=renderer dev  # Preview/export
+#### 5. Start Individual Applications (Alternative)
+```bash
+# Start only the editor (for focused development)
+pnpm --filter=editor dev
 
-# Build all packages
+# Start only the renderer (for preview testing)
+pnpm --filter=renderer dev
+```
+**Why**: 
+- Allows focused development on specific applications
+- Reduces resource usage when working on single components
+- Faster startup when you only need one application
+
+#### 6. Build for Production
+```bash
+# Build all packages and applications
 pnpm build
 ```
+**Why**: 
+- Compiles TypeScript to JavaScript
+- Optimizes code for production
+- Generates static assets for deployment
+- Validates the entire build pipeline
+
+### Development Workflow Commands
+
+#### Package Management
+```bash
+# Add a new dependency to a specific package
+pnpm --filter=builder-engine add zod
+
+# Add a dev dependency to the entire workspace
+pnpm add -D @types/node
+
+# Remove a dependency
+pnpm --filter=editor remove react-router-dom
+```
+**Why**: 
+- `--filter` targets specific packages in the monorepo
+- Maintains dependency isolation between packages
+- Prevents version conflicts across the workspace
+
+#### Code Quality
+```bash
+# Run linting across all packages
+pnpm lint
+
+# Format all code consistently
+pnpm format
+
+# Run type checking
+pnpm typecheck
+
+# Run all quality checks
+pnpm lint && pnpm format && pnpm typecheck
+```
+**Why**: 
+- Ensures consistent code style across all repositories
+- Catches type errors before runtime
+- Maintains code quality standards
+
+#### Testing (When Implemented)
+```bash
+# Run tests across all packages
+pnpm test
+
+# Run tests for a specific package
+pnpm --filter=types test
+
+# Run tests in watch mode
+pnpm test -- --watch
+```
+**Why**: 
+- Validates functionality across the entire platform
+- Enables focused testing during development
+- Provides immediate feedback on code changes
+
+### Environment Configuration
+
+#### Required Environment Variables
+Create a `.env.local` file in the root directory:
+```bash
+# Database Configuration
+DATABASE_URL="postgresql://user:password@localhost:5432/designcraft"
+
+# AI Configuration (Optional for basic functionality)
+CLAUDE_API_KEY="your-claude-api-key"
+CLAUDE_API_URL="https://api.anthropic.com"
+
+# Storage Configuration (Optional for basic functionality)
+AWS_ACCESS_KEY_ID="your-aws-key"
+AWS_SECRET_ACCESS_KEY="your-aws-secret"
+S3_BUCKET_NAME="designcraft-assets"
+```
+**Why**: 
+- Database URL is required for storage functionality
+- AI and storage configs are optional for basic editor/renderer functionality
+- Environment variables are shared across all applications in the monorepo
+
+### Database Setup (Optional)
+
+#### For Full Functionality
+```bash
+# Install PostgreSQL (if not already installed)
+# macOS: brew install postgresql
+# Ubuntu: sudo apt install postgresql postgresql-contrib
+
+# Create database
+createdb designcraft
+
+# Run database migrations (when implemented)
+pnpm --filter=storage migrate
+```
+**Why**: 
+- Required for persistent storage of projects and pages
+- Enables version management and asset storage
+- Necessary for production deployment
+
+### Troubleshooting
+
+#### Common Issues
+```bash
+# Clear all caches and reinstall
+pnpm store prune
+rm -rf node_modules
+pnpm install
+
+# Reset workspace links
+pnpm install --force
+
+# Check for dependency conflicts
+pnpm list --depth=0 --long
+```
+**Why**: 
+- Resolves dependency resolution issues
+- Fixes workspace linking problems
+- Identifies version conflicts between packages
 
 ## 📦 Repository Structure
 
