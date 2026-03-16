@@ -1,58 +1,63 @@
 'use client';
 
 import React from 'react';
+import { 
+  SparklesIcon
+} from '@heroicons/react/24/outline';
 
 interface ComponentLibraryProps {
   onInsert: (nodeType: string) => void;
 }
 
-export function ComponentLibrary({ onInsert }: ComponentLibraryProps) {
-  const components = [
-    { type: 'Text', name: 'Text', icon: '📝' },
-    { type: 'Image', name: 'Image', icon: '🖼️' },
-    { type: 'Button', name: 'Button', icon: '🔘' },
-    { type: 'Container', name: 'Container', icon: '📦' },
-    { type: 'Input', name: 'Input', icon: '🔤' },
-    { type: 'Card', name: 'Card', icon: '🃏' }
-  ];
+const components = [
+  { type: 'Text', name: 'Text', icon: '📝', color: 'text-blue-600' },
+  { type: 'Image', name: 'Image', icon: '🖼️', color: 'text-green-600' },
+  { type: 'Button', name: 'Button', icon: '🔘', color: 'text-purple-600' },
+  { type: 'Container', name: 'Container', icon: '📦', color: 'text-orange-600' },
+  { type: 'Input', name: 'Input', icon: '🔤', color: 'text-red-600' },
+  { type: 'Card', name: 'Card', icon: '🃏', color: 'text-teal-600' }
+];
 
+export function ComponentLibrary({ onInsert }: ComponentLibraryProps) {
   return (
-    <div className="p-4">
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-gray-700 mb-2">Components</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {components.map((component) => (
-              <button
-                key={component.type}
-                onClick={() => onInsert(component.type)}
-                className="text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
-              >
-                <div className="flex items-center space-x-2">
+    <div className="space-y-6">
+      <div>
+        <h3 className="inspector-label mb-3">Components</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {components.map((component) => (
+            <button
+              key={component.type}
+              onClick={() => onInsert(component.type)}
+              className="component-card notion-hover transition-all"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                   <span className="text-lg">{component.icon}</span>
-                  <span className="font-medium">{component.name}</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Drag and drop to canvas
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="font-semibold text-gray-700 mb-2">AI Components</h3>
-          <div className="space-y-2">
-            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-300 transition-colors">
-              <div className="flex items-center space-x-2">
-                <span className="text-lg">🤖</span>
-                <span className="font-medium">AI Generated</span>
+                <div className="flex-1">
+                  <span className="font-medium text-gray-900">{component.name}</span>
+                  <p className="text-xs text-gray-500 mt-1">Drag and drop to canvas</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Generate components with AI
-              </p>
             </button>
-          </div>
+          ))}
+        </div>
+      </div>
+      
+      <div>
+        <h3 className="inspector-label mb-3">AI Components</h3>
+        <div className="space-y-3">
+          <button className="w-full component-card notion-hover transition-all">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <SparklesIcon className="w-4 h-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <span className="font-medium text-gray-900">AI Generated</span>
+                <p className="text-xs text-gray-500 mt-1">Generate components with AI</p>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>

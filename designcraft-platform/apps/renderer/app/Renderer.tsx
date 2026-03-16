@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Document, RenderContext } from '@designcraft/types';
 import { getComponent } from '@designcraft/component-registry';

@@ -1,3 +1,5 @@
+'use client';
+
 import { Renderer } from './Renderer';
 
 export default function HomePage() {

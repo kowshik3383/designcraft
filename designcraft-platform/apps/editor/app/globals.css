@@ -2,32 +2,127 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --foreground-rgb: 17, 24, 39;
+    --background-rgb: 249, 250, 251;
+    --sidebar-rgb: 255, 255, 255;
+    --border-rgb: 229, 231, 235;
+    --primary-rgb: 59, 130, 246;
+    --primary-foreground-rgb: 255, 255, 255;
+    --muted-rgb: 107, 114, 128;
+    --accent-rgb: 243, 244, 246;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --foreground-rgb: 243, 244, 246;
+      --background-rgb: 17, 24, 39;
+      --sidebar-rgb: 22, 30, 42;
+      --border-rgb: 31, 41, 55;
+      --primary-rgb: 96, 165, 250;
+      --primary-foreground-rgb: 17, 24, 39;
+      --muted-rgb: 156, 163, 175;
+      --accent-rgb: 31, 41, 55;
+    }
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+@layer base {
+  html {
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  body {
+    @apply bg-[rgb(var(--background-rgb))] text-[rgb(var(--foreground-rgb))];
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  }
+}
+
+@layer components {
+  .editor-container {
+    @apply min-h-screen bg-[rgb(var(--background-rgb))];
+  }
+
+  .sidebar {
+    @apply w-80 bg-[rgb(var(--sidebar-rgb))] border-r border-[rgb(var(--border-rgb))] flex flex-col;
+  }
+
+  .sidebar-header {
+    @apply p-4 border-b border-[rgb(var(--border-rgb))];
+  }
+
+  .sidebar-tabs {
+    @apply flex border-b border-[rgb(var(--border-rgb))];
+  }
+
+  .sidebar-tab {
+    @apply flex-1 py-2 px-3 text-sm font-medium transition-colors duration-200;
+  }
+
+  .sidebar-tab-active {
+    @apply text-[rgb(var(--primary-rgb))] border-b-2 border-[rgb(var(--primary-rgb))];
+  }
+
+  .sidebar-tab-inactive {
+    @apply text-[rgb(var(--muted-rgb))] hover:text-[rgb(var(--foreground-rgb))];
+  }
+
+  .main-content {
+    @apply flex-1 flex flex-col;
+  }
+
+  .toolbar {
+    @apply bg-[rgb(var(--sidebar-rgb))] border-b border-[rgb(var(--border-rgb))] px-4 py-2;
+  }
+
+  .canvas-container {
+    @apply flex-1 overflow-hidden bg-[rgb(var(--background-rgb))];
+  }
+
+  .component-card {
+    @apply p-3 border border-[rgb(var(--border-rgb))] rounded-lg hover:bg-[rgb(var(--accent-rgb))] transition-colors duration-200 cursor-pointer;
+  }
+
+  .inspector-section {
+    @apply p-4 border-b border-[rgb(var(--border-rgb))];
+  }
+
+  .inspector-label {
+    @apply text-xs font-medium text-[rgb(var(--muted-rgb))] uppercase tracking-wide mb-2;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 border border-[rgb(var(--border-rgb))] rounded-md focus:outline-none focus:ring-2 focus:ring-[rgb(var(--primary-rgb))] focus:border-transparent;
+  }
+
+  .btn-primary {
+    @apply bg-[rgb(var(--primary-rgb))] text-[rgb(var(--primary-foreground-rgb))] px-4 py-2 rounded-md hover:opacity-90 transition-opacity duration-200 font-medium;
+  }
+
+  .btn-secondary {
+    @apply bg-[rgb(var(--accent-rgb))] text-[rgb(var(--foreground-rgb))] px-4 py-2 rounded-md hover:bg-[rgb(var(--border-rgb))] transition-colors duration-200 font-medium;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-[rgb(var(--foreground-rgb))] px-4 py-2 rounded-md hover:bg-[rgb(var(--accent-rgb))] transition-colors duration-200 font-medium;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .glass-effect {
+    @apply bg-white/50 backdrop-blur-sm border border-white/20;
+  }
+
+  .notion-card {
+    @apply bg-[rgb(var(--sidebar-rgb))] border border-[rgb(var(--border-rgb))] rounded-lg shadow-sm;
+  }
+
+  .notion-hover {
+    @apply hover:shadow-md hover:border-[rgb(var(--primary-rgb))] transition-all duration-200;
   }
 }
