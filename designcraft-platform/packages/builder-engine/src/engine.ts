@@ -16,6 +16,26 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       future: []
     },
 
+    applyOperations: (operations: Operation[]) => {
+      operations.forEach(op => {
+        const state = useBuilderStore.getState();
+        switch (op.type) {
+          case 'INSERT_NODE':
+            state.insertNode(op.payload.nodeType, op.payload.parentId, op.payload.index, op.payload.props);
+            break;
+          case 'DELETE_NODE':
+            state.deleteNode(op.payload.nodeId);
+            break;
+          case 'MOVE_NODE':
+            state.moveNode(op.payload.nodeId, op.payload.newParentId, op.payload.newIndex);
+            break;
+          case 'UPDATE_NODE_PROPS':
+            state.updateNodeProps(op.payload.nodeId, op.payload.props);
+            break;
+        }
+      });
+    },
+
     // Actions
     createDocument: (name: string) => {
       const newDocument: Document = {
@@ -97,7 +117,8 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
           nodeType,
           parentId,
           index,
-          props
+          props,
+          newNodeId: newNode.id // Store the ID for undo
         },
         timestamp: Date.now(),
         nodeId: newNode.id
@@ -122,7 +143,10 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       // Create operation for history
       const operation: Operation = {
         type: 'DELETE_NODE' as OperationType,
-        payload: { nodeId },
+        payload: { 
+          nodeId,
+          oldNode: { ...nodeToDelete } // Store old node for undo
+        },
         timestamp: Date.now()
       };
 
@@ -175,7 +199,9 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
         payload: {
           nodeId,
           newParentId,
-          newIndex
+          newIndex,
+          oldParentId: node.parentId,
+          oldIndex: node.order
         },
         timestamp: Date.now()
       };
@@ -227,12 +253,16 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       const state = get();
       if (!state.document) return;
 
+      const node = state.document.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
       // Create operation for history
       const operation: Operation = {
         type: 'UPDATE_NODE_PROPS' as OperationType,
         payload: {
           nodeId,
-          props
+          props,
+          oldProps: { ...node.props }
         },
         timestamp: Date.now()
       };
@@ -240,9 +270,9 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       set(state => {
         if (!state.document) return;
 
-        const node = state.document.nodes.find(n => n.id === nodeId);
-        if (node) {
-          node.props = { ...node.props, ...props };
+        const nodeToUpdate = state.document.nodes.find(n => n.id === nodeId);
+        if (nodeToUpdate) {
+          nodeToUpdate.props = { ...nodeToUpdate.props, ...props };
           state.document.updatedAt = new Date().toISOString();
         }
       });
@@ -304,9 +334,59 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       const state = get();
       if (state.history.past.length === 0) return;
 
-      const operation = state.history.past.pop()!;
+      const operation = state.history.past[state.history.past.length - 1];
+      
       set(state => {
-        state.history.future.unshift(operation);
+        if (!state.document) return;
+
+        switch (operation.type) {
+          case 'INSERT_NODE':
+            // Reverse of insert is delete
+            state.document.nodes = state.document.nodes.filter(n => n.id !== operation.payload.newNodeId);
+            if (operation.payload.parentId) {
+              const parent = state.document.nodes.find(n => n.id === operation.payload.parentId);
+              if (parent) {
+                parent.children = parent.children.filter(id => id !== operation.payload.newNodeId);
+              }
+            }
+            break;
+          case 'DELETE_NODE':
+            // Reverse of delete is insert
+            state.document.nodes.push(operation.payload.oldNode);
+            if (operation.payload.oldNode.parentId) {
+              const parent = state.document.nodes.find(n => n.id === operation.payload.oldNode.parentId);
+              if (parent) {
+                parent.children.push(operation.payload.oldNode.id);
+              }
+            }
+            break;
+          case 'MOVE_NODE':
+            // Reverse of move is move back
+            const node = state.document.nodes.find(n => n.id === operation.payload.nodeId);
+            if (node) {
+              // Update parents
+              if (node.parentId) {
+                const currentParent = state.document.nodes.find(n => n.id === node.parentId);
+                if (currentParent) currentParent.children = currentParent.children.filter(id => id !== node.id);
+              }
+              node.parentId = operation.payload.oldParentId;
+              node.order = operation.payload.oldIndex;
+              if (node.parentId) {
+                const oldParent = state.document.nodes.find(n => n.id === node.parentId);
+                if (oldParent) oldParent.children.push(node.id);
+              }
+            }
+            break;
+          case 'UPDATE_NODE_PROPS':
+            const nodeToUpdate = state.document.nodes.find(n => n.id === operation.payload.nodeId);
+            if (nodeToUpdate) {
+              nodeToUpdate.props = operation.payload.oldProps;
+            }
+            break;
+        }
+
+        state.history.future.unshift(state.history.past.pop()!);
+        state.document.updatedAt = new Date().toISOString();
       });
     },
 
@@ -314,9 +394,55 @@ export const useBuilderStore = create<BuilderState & BuilderActions>()(
       const state = get();
       if (state.history.future.length === 0) return;
 
-      const operation = state.history.future.shift()!;
+      const operation = state.history.future[0];
+
       set(state => {
-        state.history.past.push(operation);
+        if (!state.document) return;
+
+        switch (operation.type) {
+          case 'INSERT_NODE':
+            const newNode: Node = {
+              id: operation.payload.newNodeId,
+              type: operation.payload.nodeType,
+              props: operation.payload.props,
+              children: [],
+              parentId: operation.payload.parentId,
+              order: operation.payload.index
+            };
+            state.document.nodes.push(newNode);
+            if (newNode.parentId) {
+              const parent = state.document.nodes.find(n => n.id === newNode.parentId);
+              if (parent) parent.children.push(newNode.id);
+            }
+            break;
+          case 'DELETE_NODE':
+            state.document.nodes = state.document.nodes.filter(n => n.id !== operation.payload.nodeId);
+            break;
+          case 'MOVE_NODE':
+            const node = state.document.nodes.find(n => n.id === operation.payload.nodeId);
+            if (node) {
+              if (node.parentId) {
+                const currentParent = state.document.nodes.find(n => n.id === node.parentId);
+                if (currentParent) currentParent.children = currentParent.children.filter(id => id !== node.id);
+              }
+              node.parentId = operation.payload.newParentId;
+              node.order = operation.payload.newIndex;
+              if (node.parentId) {
+                const newParent = state.document.nodes.find(n => n.id === node.parentId);
+                if (newParent) newParent.children.push(node.id);
+              }
+            }
+            break;
+          case 'UPDATE_NODE_PROPS':
+            const nodeToUpdate = state.document.nodes.find(n => n.id === operation.payload.nodeId);
+            if (nodeToUpdate) {
+              nodeToUpdate.props = operation.payload.props;
+            }
+            break;
+        }
+
+        state.history.past.push(state.history.future.shift()!);
+        state.document.updatedAt = new Date().toISOString();
       });
     },
 

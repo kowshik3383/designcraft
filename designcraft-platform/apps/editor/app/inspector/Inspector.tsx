@@ -2,15 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  PencilIcon, 
-  DocumentDuplicateIcon, 
   TrashIcon,
-  EyeIcon,
-  EyeSlashIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  PlusIcon,
-  MinusIcon
 } from '@heroicons/react/24/outline';
 import { useBuilderStore } from '@designcraft/builder-engine';
 
@@ -21,85 +15,59 @@ interface InspectorProps {
 
 interface ComponentSchema {
   type: string;
-  properties: {
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'color' | 'select';
-    label: string;
-    options?: string[];
-    min?: number;
-    max?: number;
-    step?: number;
+  sections: {
+    id: string;
+    title: string;
+    properties: {
+      name: string;
+      type: 'string' | 'number' | 'boolean' | 'color' | 'select' | 'position' | 'size';
+      label: string;
+      options?: string[];
+      min?: number;
+      max?: number;
+      step?: number;
+    }[];
   }[];
 }
 
 export function Inspector({ nodeId, onUpdateProps }: InspectorProps) {
-  const [expandedSections, setExpandedSections] = useState<string[]>(['basic', 'style', 'layout']);
-  const [activeTab, setActiveTab] = useState<'properties' | 'style' | 'layout'>('properties');
+  const [expandedSections, setExpandedSections] = useState<string[]>(['layout', 'appearance', 'content']);
   
   const node = useBuilderStore((state) => 
     nodeId ? state.document?.nodes.find(n => n.id === nodeId) : null
   );
 
+  const [localProps, setLocalProps] = useState<any>({});
+
+  useEffect(() => {
+    if (node) {
+      setLocalProps(node.props || {});
+    }
+  }, [nodeId, node?.props]);
+
   if (!nodeId || !node) {
     return (
-      <div className="notion-card h-full">
-        <div className="p-6">
-          <div className="text-center text-gray-500 py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <PencilIcon className="w-8 h-8" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Select a component</h3>
-            <p className="text-sm text-gray-600">Properties will appear here</p>
-          </div>
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-[#2C2C2C]">
+        <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4">
+          <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+          </svg>
         </div>
+        <p className="text-sm font-medium text-gray-400">Select a layer to view properties</p>
       </div>
     );
   }
-
-  const componentSchemas: Record<string, ComponentSchema> = {
-    Text: {
-      type: 'Text',
-      properties: [
-        { name: 'content', type: 'string', label: 'Text Content' },
-        { name: 'fontSize', type: 'number', label: 'Font Size', min: 10, max: 72, step: 1 },
-        { name: 'color', type: 'color', label: 'Text Color' },
-        { name: 'fontWeight', type: 'select', label: 'Font Weight', options: ['normal', 'bold', 'lighter', 'bolder'] },
-        { name: 'textAlign', type: 'select', label: 'Text Align', options: ['left', 'center', 'right', 'justify'] }
-      ]
-    },
-    Button: {
-      type: 'Button',
-      properties: [
-        { name: 'content', type: 'string', label: 'Button Text' },
-        { name: 'variant', type: 'select', label: 'Variant', options: ['primary', 'secondary', 'outline', 'ghost'] },
-        { name: 'size', type: 'select', label: 'Size', options: ['sm', 'md', 'lg'] },
-        { name: 'color', type: 'color', label: 'Background Color' },
-        { name: 'textColor', type: 'color', label: 'Text Color' }
-      ]
-    },
-    Image: {
-      type: 'Image',
-      properties: [
-        { name: 'src', type: 'string', label: 'Image URL' },
-        { name: 'alt', type: 'string', label: 'Alt Text' },
-        { name: 'width', type: 'number', label: 'Width', min: 0, max: 1000, step: 1 },
-        { name: 'height', type: 'number', label: 'Height', min: 0, max: 1000, step: 1 },
-        { name: 'objectFit', type: 'select', label: 'Object Fit', options: ['cover', 'contain', 'fill', 'scale-down'] }
-      ]
-    }
-  };
-
-  const schema = componentSchemas[node.type] || componentSchemas.Text;
-  const [localProps, setLocalProps] = useState(node.props || {});
-
-  useEffect(() => {
-    setLocalProps(node.props || {});
-  }, [nodeId, node.props]);
 
   const handlePropChange = (key: string, value: any) => {
     const newProps = { ...localProps, [key]: value };
     setLocalProps(newProps);
     onUpdateProps(newProps);
+  };
+
+  const nestedPropChange = (parentKey: string, key: string, value: any) => {
+    const parentValue = localProps[parentKey] || {};
+    const newParentValue = { ...parentValue, [key]: value };
+    handlePropChange(parentKey, newParentValue);
   };
 
   const toggleSection = (section: string) => {
@@ -110,172 +78,193 @@ export function Inspector({ nodeId, onUpdateProps }: InspectorProps) {
     );
   };
 
-  const renderProperty = (property: any) => {
-    const value = localProps[property.name] || '';
-    
-    switch (property.type) {
+  const PropertyLabel = ({ label }: { label: string }) => (
+    <label className="text-[11px] text-gray-500 w-20 flex-shrink-0">{label}</label>
+  );
+
+  const renderPropertyField = (prop: any) => {
+    const value = localProps[prop.name];
+
+    switch (prop.type) {
       case 'string':
         return (
           <input
             type="text"
-            value={value}
-            onChange={(e) => handlePropChange(property.name, e.target.value)}
-            className="input-field"
-            placeholder={property.label}
+            value={value || ''}
+            onChange={(e) => handlePropChange(prop.name, e.target.value)}
+            className="flex-1 bg-transparent border border-[#333333] hover:border-gray-600 focus:border-blue-500 rounded px-2 py-1 text-xs text-white outline-none transition-colors"
           />
         );
-      
       case 'number':
         return (
-          <div className="space-y-2">
-            <input
-              type="number"
-              value={value}
-              onChange={(e) => handlePropChange(property.name, parseInt(e.target.value))}
-              className="input-field"
-              min={property.min}
-              max={property.max}
-              step={property.step}
-            />
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>{property.min || 0}</span>
-              <span>{property.max || 100}</span>
-            </div>
-          </div>
+          <input
+            type="number"
+            value={value || 0}
+            onChange={(e) => handlePropChange(prop.name, parseInt(e.target.value))}
+            className="flex-1 bg-transparent border border-[#333333] hover:border-gray-600 focus:border-blue-500 rounded px-2 py-1 text-xs text-white outline-none transition-colors"
+          />
         );
-      
-      case 'boolean':
-        return (
-          <button
-            onClick={() => handlePropChange(property.name, !value)}
-            className={`w-full p-2 rounded-md text-left ${
-              value ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
-            }`}
-          >
-            {value ? 'Enabled' : 'Disabled'}
-          </button>
-        );
-      
       case 'color':
         return (
-          <div className="flex space-x-2">
-            <input
-              type="color"
-              value={value || '#000000'}
-              onChange={(e) => handlePropChange(property.name, e.target.value)}
-              className="w-10 h-10 border border-gray-300 rounded-md"
+          <div className="flex-1 flex items-center space-x-2">
+            <div 
+              className="w-6 h-6 rounded border border-[#333333] cursor-pointer"
+              style={{ backgroundColor: value || '#000000' }}
             />
             <input
               type="text"
               value={value || '#000000'}
-              onChange={(e) => handlePropChange(property.name, e.target.value)}
-              className="flex-1 input-field"
+              onChange={(e) => handlePropChange(prop.name, e.target.value)}
+              className="flex-1 bg-transparent border border-[#333333] hover:border-gray-600 focus:border-blue-500 rounded px-2 py-1 text-xs text-white outline-none transition-colors uppercase"
             />
           </div>
         );
-      
       case 'select':
         return (
           <select
-            value={value}
-            onChange={(e) => handlePropChange(property.name, e.target.value)}
-            className="input-field"
+            value={value || prop.options?.[0]}
+            onChange={(e) => handlePropChange(prop.name, e.target.value)}
+            className="flex-1 bg-[#2C2C2C] border border-[#333333] hover:border-gray-600 focus:border-blue-500 rounded px-2 py-1 text-xs text-white outline-none transition-colors"
           >
-        {property.options?.map((option: string) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
+            {prop.options?.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         );
-      
       default:
         return null;
     }
   };
 
-  return (
-    <div className="notion-card h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-900">{node.type}</h3>
-            <p className="text-sm text-gray-600 mt-1">Component Inspector</p>
-          </div>
-          <div className="flex space-x-2">
-            <button className="p-2 hover:bg-gray-100 rounded-md transition-colors">
-              <DocumentDuplicateIcon className="w-5 h-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-red-50 rounded-md transition-colors">
-              <TrashIcon className="w-5 h-5 text-red-600" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {['properties', 'style', 'layout'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as typeof activeTab)}
-            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-              activeTab === tab 
-                ? 'text-blue-600 border-b-2 border-blue-600' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-4">
-        {schema.properties.map((property) => (
-          <div key={property.name} className="notion-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">
-                {property.label}
-              </label>
-              <span className="text-xs text-gray-500 capitalize">{property.type}</span>
+  const sections = [
+    {
+      id: 'layout',
+      title: 'Layout',
+      properties: [
+        { 
+          id: 'pos', 
+          label: 'Position', 
+          render: () => (
+            <div className="flex space-x-2 w-full">
+              <div className="flex-1 flex items-center space-x-2">
+                <span className="text-[10px] text-gray-600">X</span>
+                <input 
+                  type="number" 
+                  value={localProps.position?.x || 0} 
+                  onChange={(e) => nestedPropChange('position', 'x', parseInt(e.target.value))}
+                  className="w-full bg-transparent border border-[#333333] hover:border-gray-600 rounded px-1.5 py-1 text-[11px] text-white outline-none"
+                />
+              </div>
+              <div className="flex-1 flex items-center space-x-2">
+                <span className="text-[10px] text-gray-600">Y</span>
+                <input 
+                  type="number" 
+                  value={localProps.position?.y || 0} 
+                  onChange={(e) => nestedPropChange('position', 'y', parseInt(e.target.value))}
+                  className="w-full bg-transparent border border-[#333333] hover:border-gray-600 rounded px-1.5 py-1 text-[11px] text-white outline-none"
+                />
+              </div>
             </div>
-            {renderProperty(property)}
+          )
+        },
+        { 
+          id: 'size', 
+          label: 'Size', 
+          render: () => (
+            <div className="flex space-x-2 w-full">
+              <div className="flex-1 flex items-center space-x-2">
+                <span className="text-[10px] text-gray-600">W</span>
+                <input 
+                  type="number" 
+                  value={localProps.width || 0} 
+                  onChange={(e) => handlePropChange('width', parseInt(e.target.value))}
+                  className="w-full bg-transparent border border-[#333333] hover:border-gray-600 rounded px-1.5 py-1 text-[11px] text-white outline-none"
+                />
+              </div>
+              <div className="flex-1 flex items-center space-x-2">
+                <span className="text-[10px] text-gray-600">H</span>
+                <input 
+                  type="number" 
+                  value={localProps.height || 0} 
+                  onChange={(e) => handlePropChange('height', parseInt(e.target.value))}
+                  className="w-full bg-transparent border border-[#333333] hover:border-gray-600 rounded px-1.5 py-1 text-[11px] text-white outline-none"
+                />
+              </div>
+            </div>
+          )
+        }
+      ]
+    },
+    {
+      id: 'appearance',
+      title: 'Appearance',
+      properties: [
+        { id: 'opacity', label: 'Opacity', type: 'number', name: 'opacity' },
+        { id: 'radius', label: 'Corners', type: 'number', name: 'borderRadius' },
+        { id: 'bg', label: 'Fill', type: 'color', name: 'backgroundColor' }
+      ]
+    },
+    {
+      id: 'content',
+      title: 'Content',
+      properties: [
+        { id: 'text', label: 'Value', type: 'string', name: 'text' },
+        { id: 'font', label: 'Size', type: 'number', name: 'fontSize' },
+        { id: 'color', label: 'Text', type: 'color', name: 'color' },
+        { id: 'align', label: 'Align', type: 'select', name: 'textAlign', options: ['left', 'center', 'right'] }
+      ]
+    }
+  ];
+
+  return (
+    <div className="flex flex-col bg-[#2C2C2C] h-full overflow-y-auto custom-scrollbar divide-y divide-[#333333]">
+      {/* Node Info Header */}
+      <div className="p-4 bg-[#2C2C2C] sticky top-0 z-10">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            <h2 className="text-xs font-bold text-white uppercase tracking-wider">{node.type}</h2>
           </div>
-        ))}
+          <button 
+            onClick={() => useBuilderStore.getState().deleteNode(nodeId)}
+            className="text-gray-500 hover:text-red-400 p-1 rounded transition-colors"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <p className="text-[10px] text-gray-500 font-mono">{nodeId}</p>
       </div>
 
-      {/* Advanced Settings */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Visibility</span>
-            <button
-              onClick={() => handlePropChange('visible', !localProps.visible)}
-              className={`p-2 rounded-md ${
-                localProps.visible !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
-              }`}
-            >
-              {localProps.visible !== false ? (
-                <EyeIcon className="w-5 h-5" />
-              ) : (
-                <EyeSlashIcon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+      {sections.map(section => (
+        <div key={section.id} className="flex flex-col">
+          <button 
+            onClick={() => toggleSection(section.id)}
+            className="flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors group"
+          >
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{section.title}</span>
+            {expandedSections.includes(section.id) ? (
+              <ChevronDownIcon className="w-3 h-3 text-gray-600 group-hover:text-gray-400" />
+            ) : (
+              <ChevronRightIcon className="w-3 h-3 text-gray-600 group-hover:text-gray-400" />
+            )}
+          </button>
           
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Opacity</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={localProps.opacity || 1}
-              onChange={(e) => handlePropChange('opacity', parseFloat(e.target.value))}
-              className="w-24"
-            />
-          </div>
+          {expandedSections.includes(section.id) && (
+            <div className="px-4 pb-4 space-y-3">
+              {section.properties.map((prop: any) => (
+                <div key={prop.id} className="flex items-center space-x-2">
+                  <PropertyLabel label={prop.label} />
+                  {prop.render ? prop.render() : renderPropertyField(prop)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      ))}
+
+      {/* Advanced Section */}
+      <div className="p-4">
+        <button className="w-full py-2 bg-[#3C3C3C] hover:bg-[#4C4C4C] text-[11px] text-white font-medium rounded transition-colors border border-[#444444]">
+          View JSON Data
+        </button>
       </div>
     </div>
   );

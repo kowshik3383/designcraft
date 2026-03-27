@@ -11,115 +11,118 @@ export class OperationGenerator {
   generateOperations(prompt: string, context: PromptContext): Operation[] {
     const operations: Operation[] = [];
     const timestamp = Date.now();
-
-    // Simple keyword-based parsing for demo purposes
     const lowerPrompt = prompt.toLowerCase();
 
-    // Handle insert operations
+    // 1. Handle "Enhance" / "Fix Layout" / "Figma Import"
+    if (lowerPrompt.includes('enhance') || lowerPrompt.includes('fix') || lowerPrompt.includes('layout') || lowerPrompt.includes('figma')) {
+      return this.generateEnhancementOperations(context);
+    }
+
+    // 2. Handle insertion operations (existing logic)
     if (lowerPrompt.includes('add') || lowerPrompt.includes('create')) {
       if (lowerPrompt.includes('text') || lowerPrompt.includes('paragraph')) {
-        const op: Operation = {
+        operations.push({
           type: 'INSERT_NODE',
           payload: {
             nodeType: 'Text',
             parentId: context.selectedNodeId || null,
             index: 0,
             props: {
-              text: 'New text content',
+              text: 'New AI Text',
               fontSize: 16,
-              color: '#000000'
+              color: '#FFFFFF',
+              position: { x: 100, y: 100 }
             }
           },
           timestamp
-        };
-        operations.push(op);
+        });
       }
 
       if (lowerPrompt.includes('button')) {
-        const op: Operation = {
+        operations.push({
           type: 'INSERT_NODE',
           payload: {
             nodeType: 'Button',
             parentId: context.selectedNodeId || null,
             index: 0,
             props: {
-              text: 'New Button',
+              text: 'AI Button',
               variant: 'primary',
-              size: 'md'
+              backgroundColor: '#3B82F6',
+              color: '#FFFFFF',
+              position: { x: 150, y: 150 }
             }
           },
           timestamp
-        };
-        operations.push(op);
-      }
-
-      if (lowerPrompt.includes('image') || lowerPrompt.includes('picture')) {
-        const op: Operation = {
-          type: 'INSERT_NODE',
-          payload: {
-            nodeType: 'Image',
-            parentId: context.selectedNodeId || null,
-            index: 0,
-            props: {
-              src: 'https://via.placeholder.com/300x150',
-              alt: 'New image',
-              width: '100%',
-              height: 'auto'
-            }
-          },
-          timestamp
-        };
-        operations.push(op);
+        });
       }
     }
 
-    // Handle update operations
-    if (lowerPrompt.includes('change') || lowerPrompt.includes('update') || lowerPrompt.includes('modify')) {
-      if (context.selectedNodeId) {
-        const op: Operation = {
+    // 3. Handle specific positioning commands
+    if (lowerPrompt.includes('center')) {
+      const nodes = context.document?.nodes || [];
+      const selectedId = context.selectedNodeId;
+      
+      if (selectedId) {
+        operations.push({
           type: 'UPDATE_NODE_PROPS',
           payload: {
-            nodeId: context.selectedNodeId,
+            nodeId: selectedId,
             props: {
-              text: 'Updated text',
-              fontSize: 20,
-              color: '#333333'
+              position: { x: 500, y: 350 } // Assuming canvas center
             }
           },
           timestamp
-        };
-        operations.push(op);
+        });
       }
     }
 
-    // Handle delete operations
-    if (lowerPrompt.includes('delete') || lowerPrompt.includes('remove')) {
-      if (context.selectedNodeId) {
-        const op: Operation = {
-          type: 'DELETE_NODE',
-          payload: {
-            nodeId: context.selectedNodeId
-          },
-          timestamp
-        };
-        operations.push(op);
-      }
-    }
+    return operations;
+  }
 
-    // Handle move operations
-    if (lowerPrompt.includes('move') || lowerPrompt.includes('reposition')) {
-      if (context.selectedNodeId) {
-        const op: Operation = {
-          type: 'MOVE_NODE',
+  private generateEnhancementOperations(context: PromptContext): Operation[] {
+    const operations: Operation[] = [];
+    const nodes = context.document?.nodes || [];
+    const timestamp = Date.now();
+
+    // Logic: If there are multiple nodes, try to align them or group them
+    if (nodes.length > 1) {
+      // Simple alignment logic: Align all nodes to the same X if they are close
+      let startX = nodes[0].props.position?.x || 100;
+      nodes.forEach((node, index) => {
+        operations.push({
+          type: 'UPDATE_NODE_PROPS',
           payload: {
-            nodeId: context.selectedNodeId,
-            newParentId: null,
-            newIndex: 0
+            nodeId: node.id,
+            props: {
+              position: { 
+                x: startX, 
+                y: 100 + (index * 120) // Vertical stack with 20px spacing
+              },
+              width: 400,
+              borderRadius: 8,
+              backgroundColor: node.type === 'Container' ? '#2C2C2C' : node.props.backgroundColor
+            }
           },
           timestamp
-        };
-        operations.push(op);
-      }
+        });
+      });
+    } else if (nodes.length === 1) {
+      // Single node enhancement
+      operations.push({
+        type: 'UPDATE_NODE_PROPS',
+        payload: {
+          nodeId: nodes[0].id,
+          props: {
+            width: 600,
+            height: 400,
+            backgroundColor: '#1E1E1E',
+            borderRadius: 16,
+            position: { x: 300, y: 200 }
+          }
+        },
+        timestamp
+      });
     }
 
     return operations;

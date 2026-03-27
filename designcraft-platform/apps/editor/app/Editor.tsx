@@ -7,6 +7,24 @@ import { Canvas } from "./canvas/Canvas";
 import { Inspector } from "./inspector/Inspector";
 import { ComponentLibrary } from "./library/ComponentLibrary";
 import { StoryMode } from "./story/StoryMode";
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  DragStartEvent, 
+  useSensor, 
+  useSensors, 
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  defaultDropAnimationSideEffects
+} from "@dnd-kit/core";
+import { 
+  arrayMove, 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy 
+} from "@dnd-kit/sortable";
 
 export default function Editor() {
   const [activePanel, setActivePanel] = useState<"library" | "inspector" | "story">("library");
@@ -15,6 +33,19 @@ export default function Editor() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
   
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const document = useBuilderStore((state) => state.document);
   const selectedNodeId = useBuilderStore((state) => state.selectedNodeId);
 
@@ -27,11 +58,15 @@ export default function Editor() {
     useBuilderStore.getState().createDocument("New Design");
   };
 
-  const handleInsertNode = (nodeType: string) => {
-    useBuilderStore.getState().insertNode(nodeType, null, 0);
+  const handleInsertNode = (nodeType: string, position?: { x: number, y: number }) => {
+    useBuilderStore.getState().insertNode(nodeType, null, 0, {
+      position: position || { x: 100, y: 100 },
+      width: 200,
+      height: 100
+    });
   };
 
-  const handleSelectNode = (nodeId: string) => {
+  const handleSelectNode = (nodeId: string | null) => {
     useBuilderStore.getState().selectNode(nodeId);
   };
 
@@ -41,30 +76,93 @@ export default function Editor() {
     }
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setDraggedItem(event.active.data.current?.type || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over, delta } = event;
+    setDraggedItem(null);
+
+    if (over && over.id === 'canvas' && active.data.current?.isLibraryItem) {
+      // Logic for dropping new component from library
+      const x = 100 + delta.x; // Simplified relative drop
+      const y = 100 + delta.y;
+      handleInsertNode(active.data.current.type, { x, y });
+    } else if (active.data.current?.isNode) {
+      // Logic for moving existing node
+      const nodeId = active.data.current.id;
+      const node = useBuilderStore.getState().getNode(nodeId);
+      if (node) {
+        const currentPos = node.props.position || { x: 0, y: 0 };
+        useBuilderStore.getState().updateNodeProps(nodeId, {
+          position: {
+            x: currentPos.x + delta.x,
+            y: currentPos.y + delta.y
+          }
+        });
+      }
+    }
+  };
+
+  // Initialize document if none exists
+  useEffect(() => {
+    if (!document) {
+      handleCreateDocument();
+    }
+  }, [document]);
+
+  // Figma Paste Handler
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type === 'text/plain') {
+          items[i].getAsString((content) => {
+            try {
+              if (content.includes('figma') || content.startsWith('{')) {
+                console.log('Detected potential Figma design data');
+                useBuilderStore.getState().insertNode('Container', null, 0, {
+                  name: 'Pasted Group',
+                  isPasted: true,
+                  content,
+                  position: { x: 100, y: 100 },
+                  width: 400,
+                  height: 300
+                });
+              }
+            } catch (err) {
+              console.error('Failed to parse paste data', err);
+            }
+          });
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Undo: Ctrl/Cmd + Z
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
-        console.log('Undo action triggered');
-        // Add undo logic here
+        useBuilderStore.getState().undo();
       }
       
-      // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
       if ((e.ctrlKey || e.metaKey) && (e.shiftKey && e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
         e.preventDefault();
-        console.log('Redo action triggered');
-        // Add redo logic here
+        useBuilderStore.getState().redo();
       }
       
-      // Toggle Sidebar: Ctrl/Cmd + B
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         setIsSidebarCollapsed(!isSidebarCollapsed);
       }
       
-      // Toggle Inspector: Ctrl/Cmd + I
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         if (activePanel === 'inspector') {
@@ -75,14 +173,11 @@ export default function Editor() {
         }
       }
       
-      // Delete selected node: Delete or Backspace
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId) {
         e.preventDefault();
-        console.log('Delete node:', selectedNodeId);
-        // Add delete logic here
+        useBuilderStore.getState().deleteNode(selectedNodeId);
       }
       
-      // Escape: Close inspector or clear selection
       if (e.key === 'Escape') {
         if (activePanel === 'inspector' && !isInspectorCollapsed) {
           setIsInspectorCollapsed(true);
@@ -93,9 +188,7 @@ export default function Editor() {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedNodeId, activePanel, isInspectorCollapsed, isSidebarCollapsed]);
 
   // Sidebar resize handler
@@ -153,108 +246,106 @@ export default function Editor() {
   }, []);
 
   return (
-    <div className="editor-container">
-      {/* Left Sidebar */}
-      <aside 
-        ref={sidebarRef}
-        className={`sidebar ${isSidebarCollapsed ? 'w-16' : ''}`}
-        style={{ width: isSidebarCollapsed ? 64 : sidebarWidth }}
-      >
-        <div className="sidebar-header">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">DesignCraft</h1>
-              <p className="text-sm text-gray-600 mt-1">AI-powered editor</p>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="editor-container h-screen flex overflow-hidden">
+        {/* Left Sidebar */}
+        <aside 
+          ref={sidebarRef}
+          className={`sidebar relative transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : ''}`}
+          style={{ width: isSidebarCollapsed ? 64 : sidebarWidth }}
+        >
+          <div className="sidebar-header">
+            <div className="flex items-center justify-between">
+              {!isSidebarCollapsed && (
+                <div>
+                  <h1 className="text-xl font-bold text-white">DesignCraft</h1>
+                  <p className="text-sm text-gray-400 mt-1">AI-powered editor</p>
+                </div>
+              )}
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 hover:bg-white/10 rounded-md transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
           </div>
-        </div>
 
-        {!isSidebarCollapsed && (
-          <>
-            {/* Tabs */}
-            <div className="sidebar-tabs">
-              {["library", "inspector", "story"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActivePanel(tab as typeof activePanel)}
-                  className={`sidebar-tab ${activePanel === tab ? 'sidebar-tab-active' : 'sidebar-tab-inactive'}`}
-                >
-                  {tab === "library"
-                    ? "Components"
-                    : tab === "inspector"
-                      ? "Inspector"
-                      : "Story Mode"}
-                </button>
-              ))}
-            </div>
+          {!isSidebarCollapsed && (
+            <>
+              {/* Tabs */}
+              <div className="sidebar-tabs px-2 py-1">
+                {["library", "inspector", "story"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActivePanel(tab as typeof activePanel)}
+                    className={`sidebar-tab ${activePanel === tab ? 'sidebar-tab-active' : 'sidebar-tab-inactive'}`}
+                  >
+                    {tab === "library"
+                      ? "Assets"
+                      : tab === "inspector"
+                        ? "Design"
+                        : "Prototyping"}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              {activePanel === "library" && (
-                <ComponentLibrary onInsert={handleInsertNode} />
-              )}
-              {activePanel === "inspector" && (
-                <Inspector
-                  nodeId={selectedNodeId}
-                  onUpdateProps={handleUpdateProps}
-                />
-              )}
-              {activePanel === "story" && <StoryMode />}
-            </div>
-          </>
-        )}
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {activePanel === "library" && (
+                  <ComponentLibrary onInsert={(type) => handleInsertNode(type)} />
+                )}
+                {activePanel === "inspector" && (
+                  <Inspector
+                    nodeId={selectedNodeId}
+                    onUpdateProps={handleUpdateProps}
+                  />
+                )}
+                {activePanel === "story" && <StoryMode />}
+              </div>
+            </>
+          )}
 
-        {/* Resize handle */}
-        <div
-          ref={sidebarDragRef}
-          className="absolute top-0 right-0 bottom-0 w-1 bg-transparent hover:bg-blue-200 cursor-col-resize transition-colors"
-          style={{ width: isSidebarCollapsed ? 0 : 1 }}
-        />
-      </aside>
+          {/* Resize handle */}
+          <div
+            ref={sidebarDragRef}
+            className="absolute top-0 right-0 bottom-0 w-1 bg-transparent hover:bg-blue-500 cursor-col-resize transition-colors z-50"
+          />
+        </aside>
 
-      {/* Resize handle for sidebar */}
-      {!isSidebarCollapsed && (
-        <div
-          className="absolute top-0 bottom-0 w-1 bg-transparent hover:bg-blue-200 cursor-col-resize"
-          style={{ left: sidebarWidth, top: 0, bottom: 0, width: 1 }}
-        />
-      )}
+        {/* Main Editor Area */}
+        <main className="main-content flex-1 h-screen flex flex-col bg-[#1E1E1E]">
+          {/* Top Toolbar */}
+          <div className="toolbar z-20">
+            <Toolbar onCreateDocument={handleCreateDocument} />
+          </div>
 
-      {/* Main Editor Area */}
-      <main className="main-content">
-        {/* Top Toolbar */}
-        <div className="toolbar">
-          <Toolbar onCreateDocument={handleCreateDocument} />
-        </div>
+          {/* Canvas */}
+          <div className="canvas-container flex-1 relative overflow-hidden bg-[#181818] rounded-tl-xl shadow-2xl">
+            <Canvas onSelectNode={handleSelectNode} />
+          </div>
+        </main>
 
-        {/* Canvas */}
-        <div className="canvas-container">
-          <Canvas onSelectNode={handleSelectNode} />
-        </div>
-      </main>
-
-      {/* Right Inspector Drawer */}
-      {activePanel === "inspector" && selectedNodeId && !isInspectorCollapsed && (
-        <>
+        {/* Right Inspector Drawer */}
+        {selectedNodeId && !isInspectorCollapsed && (
           <aside 
             ref={inspectorRef}
-            className="w-80 bg-white border-l border-gray-200 overflow-y-auto"
+            className="w-80 bg-[#2C2C2C] border-l border-[#333333] overflow-y-auto relative"
             style={{ width: inspectorWidth }}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Inspector</h3>
+            <div className="flex items-center justify-between p-4 border-b border-[#333333]">
+              <h3 className="font-semibold text-white">Inspector</h3>
               <button
                 onClick={() => setIsInspectorCollapsed(true)}
-                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                className="p-2 hover:bg-white/10 rounded-md transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -263,28 +354,42 @@ export default function Editor() {
               nodeId={selectedNodeId}
               onUpdateProps={handleUpdateProps}
             />
+            {/* Resize handle for inspector */}
+            <div
+              ref={inspectorDragRef}
+              className="absolute top-0 left-0 bottom-0 w-1 bg-transparent hover:bg-blue-500 cursor-col-resize transition-colors z-50"
+            />
           </aside>
+        )}
 
-          {/* Resize handle for inspector */}
-          <div
-            ref={inspectorDragRef}
-            className="absolute top-0 bottom-0 w-1 bg-transparent hover:bg-blue-200 cursor-col-resize"
-            style={{ right: inspectorWidth, top: 0, bottom: 0, width: 1 }}
-          />
-        </>
-      )}
+        {/* Inspector toggle button */}
+        {selectedNodeId && isInspectorCollapsed && (
+          <button
+            onClick={() => setIsInspectorCollapsed(false)}
+            className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-[#2C2C2C] border border-[#333333] p-2 rounded-l-md shadow-lg hover:bg-[#3C3C3C] transition-colors z-50"
+          >
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+      </div>
 
-      {/* Inspector toggle button */}
-      {activePanel === "inspector" && selectedNodeId && (
-        <button
-          onClick={() => setIsInspectorCollapsed(!isInspectorCollapsed)}
-          className="fixed top-1/2 right-4 transform -translate-y-1/2 bg-white border border-gray-200 p-2 rounded-md shadow-lg hover:bg-gray-50 transition-colors z-50"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-          </svg>
-        </button>
-      )}
-    </div>
+      <DragOverlay dropAnimation={{
+        sideEffects: defaultDropAnimationSideEffects({
+          styles: {
+            active: {
+              opacity: '0.5',
+            },
+          },
+        }),
+      }}>
+        {draggedItem ? (
+          <div className="bg-blue-500/20 border-2 border-blue-500 rounded-lg p-4 flex items-center justify-center backdrop-blur-sm">
+            <span className="text-blue-500 font-bold">{draggedItem}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

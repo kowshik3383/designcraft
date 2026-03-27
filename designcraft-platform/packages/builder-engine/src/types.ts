@@ -34,6 +34,7 @@ export interface BuilderActions {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  applyOperations: (operations: Operation[]) => void;
   
   // Utilities
   getNode: (nodeId: string) => Node | null;

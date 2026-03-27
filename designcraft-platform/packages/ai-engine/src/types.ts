@@ -1,4 +1,4 @@
-import { AIPrompt, AIResponse, Operation } from '@designcraft/types';
+import { AIPrompt, AIResponse, Operation, Document } from '@designcraft/types';
 
 export interface AIEngineConfig {
   apiKey: string;
@@ -10,8 +10,9 @@ export interface PromptContext {
   selectedNodeId?: string;
   pageContext?: string;
   availableComponents: string[];
+  document?: Document;
 }
 
-export interface OperationGenerator {
+export interface IOperationGenerator {
   generateOperations(prompt: string, context: PromptContext): Operation[];
 }

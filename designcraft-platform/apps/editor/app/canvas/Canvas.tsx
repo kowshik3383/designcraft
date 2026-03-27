@@ -6,53 +6,157 @@ import {
   CursorArrowRaysIcon,
   DocumentTextIcon,
   Squares2X2Icon,
-  Bars3Icon,
-  EyeIcon,
-  EyeSlashIcon,
   TrashIcon,
   DocumentDuplicateIcon,
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
   MinusIcon
 } from '@heroicons/react/24/outline';
 import { useBuilderStore } from '@designcraft/builder-engine';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 
 interface CanvasProps {
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode: (nodeId: string | null) => void;
+}
+
+interface DraggableNodeProps {
+  node: any;
+  isSelected: boolean;
+  zoom: number;
+  onClick: (nodeId: string) => void;
+}
+
+function DraggableNode({ node, isSelected, zoom, onClick }: DraggableNodeProps) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: node.id,
+    data: {
+      isNode: true,
+      id: node.id
+    }
+  });
+
+  const style = {
+    left: node.props?.position?.x || 0,
+    top: node.props?.position?.y || 0,
+    width: node.props?.width || 200,
+    height: node.props?.height || 100,
+    transform: transform 
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${zoom / 100})` 
+      : `scale(${zoom / 100})`,
+    transformOrigin: 'top left',
+    zIndex: isSelected ? 40 : 10
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`absolute p-4 border rounded-lg transition-shadow cursor-pointer shadow-sm group ${
+        isSelected 
+          ? 'border-blue-500 ring-1 ring-blue-500 bg-[#2C2C2C]' 
+          : 'border-[#333333] hover:border-gray-500 bg-[#1E1E1E]'
+      }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(node.id);
+      }}
+    >
+      <div {...listeners} {...attributes} className="absolute inset-x-0 -top-3 h-3 cursor-move" />
+      
+      <div className="flex items-center justify-between mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="text-[10px] font-medium text-gray-500 uppercase">{node.type}</span>
+        <div className="flex space-x-1">
+          <button 
+            className="p-1 hover:bg-white/10 rounded"
+            onClick={(e) => {
+              e.stopPropagation();
+              useBuilderStore.getState().copyNode(node.id);
+            }}
+          >
+            <DocumentDuplicateIcon className="w-3 h-3 text-gray-400" />
+          </button>
+          <button 
+            className="p-1 hover:bg-red-500/20 rounded"
+            onClick={(e) => {
+              e.stopPropagation();
+              useBuilderStore.getState().deleteNode(node.id);
+            }}
+          >
+            <TrashIcon className="w-3 h-3 text-red-400" />
+          </button>
+        </div>
+      </div>
+      
+      {node.type === 'Text' && (
+        <div className="text-sm text-white font-medium">
+          {node.props?.text || 'Sample text'}
+        </div>
+      )}
+      
+      {node.type === 'Button' && (
+        <button className="w-full px-3 py-1 bg-blue-500 text-white text-xs rounded font-bold shadow-md shadow-blue-500/20">
+          {node.props?.text || 'Button'}
+        </button>
+      )}
+      
+      {node.type === 'Image' && (
+        <div className="w-full h-16 bg-[#2C2C2C] border border-[#333333] rounded flex items-center justify-center overflow-hidden">
+          {node.props?.src ? (
+            <img src={node.props.src} alt={node.props.alt} className="w-full h-full object-cover" />
+          ) : (
+            <PlusIcon className="w-6 h-6 text-gray-700" />
+          )}
+        </div>
+      )}
+
+      {node.type === 'Container' && (
+        <div className="w-full h-full border border-dashed border-gray-700 rounded-md flex items-center justify-center">
+          <span className="text-[10px] text-gray-600">Container</span>
+        </div>
+      )}
+
+      {isSelected && (
+        <>
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
+          <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
+          <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
+          <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function Canvas({ onSelectNode }: CanvasProps) {
   const [showGrid, setShowGrid] = useState(true);
   const [zoom, setZoom] = useState(100);
-  const [isDragging, setIsDragging] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-
+  
   const nodes = useBuilderStore((state) => state.document?.nodes || []);
   const selectedNodeId = useBuilderStore((state) => state.selectedNodeId);
 
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'canvas',
+  });
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === canvasRef.current) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
+    if ((e.target as HTMLElement).id === 'canvas-bg' || (e.target as HTMLElement).id === 'canvas-grid') {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y });
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-      setCanvasOffset(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
-      setDragStart({ x: e.clientX, y: e.clientY });
+    if (isPanning) {
+      setCanvasOffset({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
     }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    setIsPanning(false);
   };
 
   const handleZoom = (direction: 'in' | 'out') => {
@@ -62,228 +166,125 @@ export function Canvas({ onSelectNode }: CanvasProps) {
     });
   };
 
-  const handleNodeClick = (nodeId: string) => {
-    onSelectNode(nodeId);
-  };
-
-  const renderNode = (node: any) => {
-    const isSelected = selectedNodeId === node.id;
-    
-    return (
-      <div
-        key={node.id}
-        className={`absolute p-4 border-2 rounded-lg transition-all cursor-pointer ${
-          isSelected 
-            ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' 
-            : 'border-gray-200 hover:border-gray-300 bg-white'
-        }`}
-        style={{
-          left: node.position?.x || 0,
-          top: node.position?.y || 0,
-          width: node.props?.width || 200,
-          height: node.props?.height || 100,
-          transform: `scale(${zoom / 100})`,
-          transformOrigin: 'top left'
-        }}
-        onClick={() => handleNodeClick(node.id)}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-500">{node.type}</span>
-          <div className="flex space-x-1">
-            <button className="p-1 hover:bg-gray-100 rounded">
-              <DocumentDuplicateIcon className="w-3 h-3 text-gray-400" />
-            </button>
-            <button className="p-1 hover:bg-red-50 rounded">
-              <TrashIcon className="w-3 h-3 text-red-400" />
-            </button>
-          </div>
+  return (
+    <div className="w-full h-full flex flex-col bg-[#181818] select-none">
+      {/* Canvas Toolbar overlay */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-[#2C2C2C] border border-[#333333] rounded-full px-4 py-1.5 flex items-center space-x-4 shadow-xl shadow-black/50">
+        <div className="flex items-center space-x-2 border-r border-[#333333] pr-4">
+          <button
+            onClick={() => handleZoom('out')}
+            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+          >
+            <MinusIcon className="w-4 h-4" />
+          </button>
+          <span className="text-[11px] font-bold text-gray-300 w-10 text-center">{zoom}%</span>
+          <button
+            onClick={() => handleZoom('in')}
+            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+          </button>
         </div>
         
-        {node.type === 'Text' && (
-          <div className="text-sm">
-            {node.props?.content || 'Sample text'}
-          </div>
-        )}
-        
-        {node.type === 'Button' && (
-          <button className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded">
-            {node.props?.content || 'Button'}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowGrid(!showGrid)}
+            className={`p-1.5 rounded-full transition-colors ${showGrid ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white'}`}
+          >
+            <Squares2X2Icon className="w-4 h-4" />
           </button>
-        )}
-        
-        {node.type === 'Image' && (
-          <div className="w-full h-16 bg-gray-200 rounded flex items-center justify-center">
-            <span className="text-xs text-gray-500">Image</span>
-          </div>
-        )}
-
-        {isSelected && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div className="canvas-container relative">
-      {/* Canvas Toolbar */}
-      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <CursorArrowRaysIcon className="w-5 h-5 text-gray-600" />
-              <span className="font-medium text-gray-900">Design Canvas</span>
-            </div>
-            
-            {/* View Controls */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setShowGrid(!showGrid)}
-                className={`p-2 rounded ${showGrid ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-              >
-                <Squares2X2Icon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleZoom('out')}
-                className="p-2 hover:bg-gray-100 rounded"
-              >
-                <MinusIcon className="w-4 h-4" />
-              </button>
-              <span className="text-sm font-medium text-gray-700 w-12 text-center">{zoom}%</span>
-              <button
-                onClick={() => handleZoom('in')}
-                className="p-2 hover:bg-gray-100 rounded"
-              >
-                <PlusIcon className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button className="btn-secondary flex items-center space-x-2 text-sm">
-              <PlusIcon className="w-4 h-4" />
-              <span>Add Section</span>
-            </button>
-            <button className="btn-ghost flex items-center space-x-2 text-sm">
-              <DocumentTextIcon className="w-4 h-4" />
-              <span>Clear Canvas</span>
-            </button>
-          </div>
+          <button
+            onClick={() => onSelectNode(null)}
+            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+          >
+            <CursorArrowRaysIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Canvas Area */}
       <div 
-        ref={canvasRef}
-        className="bg-white relative overflow-auto"
-        style={{ height: 'calc(100vh - 120px)' }}
+        ref={setNodeRef}
+        id="canvas-viewport"
+        className={`flex-1 relative overflow-hidden transition-colors ${isOver ? 'bg-blue-500/5' : ''}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {/* Grid Background */}
-        {showGrid && (
-          <div 
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: '20px 20px'
-            }}
-          />
-        )}
-
-        {/* Canvas Content */}
+        {/* Infinite Grid/Background */}
         <div 
-          className="relative p-8"
+          id="canvas-bg"
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
           style={{
             transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            width: '2000px',
-            height: '2000px'
+            width: '10000px',
+            height: '10000px',
+            left: '-5000px',
+            top: '-5000px'
           }}
         >
-          {/* Empty State */}
-          {nodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-6 flex items-center justify-center">
-                  <PlusIcon className="w-12 h-12 text-gray-400" />
-                </div>
-                <h3 className="text-2xl font-medium text-gray-700 mb-2">Start Building Your Design</h3>
-                <p className="text-sm text-gray-500 mb-8 max-w-md mx-auto">
-                  Drag and drop components from the sidebar to begin creating your website.
-                  Use the grid and zoom controls to help with precise positioning.
-                </p>
-                
-                <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-                  <div 
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
-                    onClick={() => onSelectNode('text-placeholder')}
-                  >
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                      <DocumentTextIcon className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="font-medium text-gray-700 mb-2">Text Section</p>
-                    <p className="text-xs text-gray-400">Add headings, paragraphs, and text content</p>
-                  </div>
-                  
-                  <div 
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group"
-                    onClick={() => onSelectNode('image-placeholder')}
-                  >
-                    <div className="w-12 h-12 bg-green-100 rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                      <PlusIcon className="w-6 h-6 text-green-600" />
-                    </div>
-                    <p className="font-medium text-gray-700 mb-2">Image Section</p>
-                    <p className="text-xs text-gray-400">Add visual content and media</p>
-                  </div>
-                  
-                  <div 
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer group"
-                    onClick={() => onSelectNode('button-placeholder')}
-                  >
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                      <CursorArrowRaysIcon className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <p className="font-medium text-gray-700 mb-2">Interactive Elements</p>
-                    <p className="text-xs text-gray-400">Add buttons and interactive components</p>
-                  </div>
-                </div>
-                
-                <div className="mt-8 text-xs text-gray-400">
-                  Tip: Use Story Mode for guided design creation or drag components directly from the sidebar
-                </div>
-              </div>
-            </div>
+          {/* Grid Background */}
+          {showGrid && (
+            <div 
+              id="canvas-grid"
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `
+                  linear-gradient(#262626 1px, transparent 1px),
+                  linear-gradient(90deg, #262626 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px'
+              }}
+            />
           )}
 
-          {/* Render Nodes */}
-          {nodes.map(renderNode)}
+          {/* Canvas Center Content */}
+          <div 
+            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[800px] bg-[#1E1E1E] shadow-2xl border border-[#333333] relative pointer-events-auto"
+            id="canvas"
+            onClick={() => onSelectNode(null)}
+          >
+            {/* Empty State */}
+            {nodes.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                <div className="text-center text-white">
+                  <div className="w-20 h-20 border-2 border-dashed border-gray-700 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                    <PlusIcon className="w-8 h-8 text-gray-700" />
+                  </div>
+                  <p className="text-sm font-medium">Drag assets here or use AI to generate</p>
+                </div>
+              </div>
+            )}
+
+            {/* Render Nodes */}
+            {nodes.map(node => (
+              <DraggableNode 
+                key={node.id} 
+                node={node} 
+                isSelected={selectedNodeId === node.id}
+                zoom={zoom}
+                onClick={onSelectNode}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Canvas Footer */}
-      <div className="bg-gray-50 border-t border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center space-x-4">
-            <span>Canvas: {nodes.length} components</span>
-            <span>Selected: {selectedNodeId || 'None'}</span>
-            <span>Zoom: {zoom}%</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowGrid(!showGrid)}
-              className="flex items-center space-x-2 hover:text-gray-700"
-            >
-              <Squares2X2Icon className="w-4 h-4" />
-              <span>{showGrid ? 'Hide' : 'Show'} Grid</span>
-            </button>
-            <span>•</span>
-            <span>Drag to pan • Click components to select • Use inspector to edit</span>
-          </div>
+      {/* Canvas Status Bar */}
+      <div className="bg-[#2C2C2C] border-t border-[#333333] px-3 py-1 flex items-center justify-between z-10">
+        <div className="flex items-center space-x-4 text-[10px] text-gray-500 font-medium">
+          <span className="flex items-center space-x-1">
+            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+            <span>Live Sync</span>
+          </span>
+          <span>{nodes.length} Layers</span>
+          {selectedNodeId && <span>Selected: {selectedNodeId}</span>}
+        </div>
+        <div className="flex items-center space-x-3 text-[10px] text-gray-400">
+          <span>Space + Drag to pan</span>
+          <span>•</span>
+          <span>Cmd + Z to undo</span>
         </div>
       </div>
     </div>

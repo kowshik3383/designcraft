@@ -4,26 +4,29 @@
 
 @layer base {
   :root {
-    --foreground-rgb: 17, 24, 39;
-    --background-rgb: 249, 250, 251;
-    --sidebar-rgb: 255, 255, 255;
-    --border-rgb: 229, 231, 235;
-    --primary-rgb: 59, 130, 246;
+    --foreground-rgb: 255, 255, 255;
+    --background-rgb: 30, 30, 30; /* Figma Background */
+    --sidebar-rgb: 44, 44, 44;     /* Figma Sidebar */
+    --border-rgb: 51, 51, 51;      /* Figma Border */
+    --primary-rgb: 24, 160, 251;   /* Figma Blue */
     --primary-foreground-rgb: 255, 255, 255;
-    --muted-rgb: 107, 114, 128;
-    --accent-rgb: 243, 244, 246;
+    --muted-rgb: 165, 165, 165;
+    --accent-rgb: 60, 60, 60;
+    --canvas-rgb: 24, 24, 24;      /* Deep Canvas Color */
   }
 
-  @media (prefers-color-scheme: dark) {
+  @media (prefers-color-scheme: light) {
     :root {
-      --foreground-rgb: 243, 244, 246;
-      --background-rgb: 17, 24, 39;
-      --sidebar-rgb: 22, 30, 42;
-      --border-rgb: 31, 41, 55;
-      --primary-rgb: 96, 165, 250;
-      --primary-foreground-rgb: 17, 24, 39;
-      --muted-rgb: 156, 163, 175;
-      --accent-rgb: 31, 41, 55;
+      /* Keep it dark by default for the premium feel requested, but provide a light fallback if needed */
+      --foreground-rgb: 17, 24, 39;
+      --background-rgb: 245, 245, 245;
+      --sidebar-rgb: 255, 255, 255;
+      --border-rgb: 229, 231, 235;
+      --primary-rgb: 24, 160, 251;
+      --primary-foreground-rgb: 255, 255, 255;
+      --muted-rgb: 107, 114, 128;
+      --accent-rgb: 243, 244, 246;
+      --canvas-rgb: 224, 224, 224;
     }
   }
 }
